@@ -37,6 +37,49 @@ def authenticate_user(username, password):
         st.error(f"Database error: {err}")
         return None
 
+def fetch_orders(user_group):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = "SELECT tableNo, Product, quantity, status FROM HotelOrder WHERE `group` = %s"
+        cursor.execute(query, (user_group,))
+        orders = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return pd.DataFrame(orders, columns=['Table No.', 'Product', 'Quantity', 'Status']) if orders else None
+    except mysql.connector.Error as err:
+        st.error(f"Database error: {err}")
+        return None
+
+def update_order_status(table_no, status):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE HotelOrder SET status = %s WHERE tableNo = %s", (status, table_no))
+        cursor.execute("UPDATE FinalOrder SET Status = %s WHERE orderNo = %s", (status, table_no))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        st.success("Order status updated successfully!")
+    except mysql.connector.Error as err:
+        st.error(f"Database error: {err}")
+
+def dashboard():
+    st.title("📊 Dashboard")
+    st.write(f"Welcome! Your group: **{st.session_state.user_group}**")
+    orders_df = fetch_orders(st.session_state.user_group)
+    if orders_df is not None:
+        st.table(orders_df)
+        table_numbers = orders_df['Table No.'].unique().tolist()
+        selected_table = st.selectbox("Select Table Number", table_numbers)
+        status_options = ["Received Order", "Processing", "Preparing Order", "Order Prepared", "Dispatched", "Served"]
+        selected_status = st.selectbox("Update Order Status", status_options)
+        if st.button("Update Status"):
+            update_order_status(selected_table, selected_status)
+            st.rerun()
+    else:
+        st.write("No orders found for your group.")
+
 def login():
     st.title("🔒 Login Page")
     username = st.text_input("Username")
@@ -79,12 +122,18 @@ if "user_group" not in st.session_state:
     st.session_state.user_group = ""
 
 # Tab Layout
-tabs = st.tabs(["Login", "Register Product"])
+tabs = st.tabs(["Login", "Dashboard", "Register Product"])
 
 with tabs[0]:
     login()
 
 with tabs[1]:
+    if st.session_state.authenticated:
+        dashboard()
+    else:
+        st.warning("Please login first to view the dashboard.")
+
+with tabs[2]:
     if st.session_state.authenticated:
         register_product()
     else:
