@@ -13,6 +13,44 @@ DB_CONFIG = {
 # Database connection
 def get_db_connection():
     return mysql.connector.connect(**DB_CONFIG)
+def fetch_products():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, name FROM products")
+        products = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return products
+    except mysql.connector.Error as err:
+        st.error(f"Database error: {err}")
+        return []
+
+def delete_product(product_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM products WHERE id = %s", (product_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        st.success("Product deleted successfully!")
+    except mysql.connector.Error as err:
+        st.error(f"Database error: {err}")
+
+def product_deletion_ui():
+    st.title("🗑️ Delete a Product")
+
+    products = fetch_products()
+    if products:
+        product_map = {f"{prod['name']} (ID: {prod['id']})": prod['id'] for prod in products}
+        selected_product = st.selectbox("Select a product to delete", list(product_map.keys()))
+
+        if st.button("Delete Product"):
+            delete_product(product_map[selected_product])
+            st.rerun()
+    else:
+        st.info("No products available to delete.")
 
 def insert_product(name, amount, img_binary, group):
     connection = get_db_connection()
@@ -134,7 +172,7 @@ if "user_group" not in st.session_state:
     st.session_state.user_group = ""
 
 # Tab Layout
-tabs = st.tabs(["Login", "Dashboard", "Register Product"])
+tabs = st.tabs(["Login", "Dashboard", "Register Product", "Delet Product"])
 
 with tabs[0]:
     login()
@@ -148,5 +186,11 @@ with tabs[1]:
 with tabs[2]:
     if st.session_state.authenticated:
         register_product()
+    else:
+        st.warning("Please login first to register a product.")
+with tabs[3]:
+    if st.session_state.authenticated:
+        
+        product_deletion_ui()
     else:
         st.warning("Please login first to register a product.")
