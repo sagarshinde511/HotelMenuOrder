@@ -51,7 +51,7 @@ def fetch_orders(user_group):
         st.error(f"Database error: {err}")
         return None
 
-def update_order_status(table_no, status):
+def update_order_status(table_no, status, user_group):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -65,7 +65,8 @@ def update_order_status(table_no, status):
         # If the order is served, delete entry from GroupTable
         if status == "Served":
             
-            cursor.execute("DELETE FROM HotelOrder WHERE tableNo = %s", (table_no,))
+            cursor.execute("DELETE FROM HotelOrder WHERE tableNo = %s AND user_group = %s", (table_no, user_group))
+
 
         conn.commit()
         cursor.close()
@@ -76,6 +77,7 @@ def update_order_status(table_no, status):
         st.error(f"Database error: {err}")
 def dashboard():
     st.title("📊 Dashboard")
+    user_group = st.session_state.user_group  # Extract it once and reuse
     st.write(f"Welcome! Your group: **{st.session_state.user_group}**")
     orders_df = fetch_orders(st.session_state.user_group)
     if orders_df is not None:
@@ -85,7 +87,7 @@ def dashboard():
         status_options = ["Received Order", "Processing", "Preparing Order", "Order Prepared", "Dispatched", "Served"]
         selected_status = st.selectbox("Update Order Status", status_options)
         if st.button("Update Status"):
-            update_order_status(selected_table, selected_status)
+            update_order_status(selected_table, selected_status, user_group)
             st.rerun()
     else:
         st.write("No orders found for your group.")
