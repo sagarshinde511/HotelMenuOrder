@@ -55,15 +55,24 @@ def update_order_status(table_no, status):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # Update order status in HotelOrder
         cursor.execute("UPDATE HotelOrder SET status = %s WHERE tableNo = %s", (status, table_no))
+
+        # Update order status in FinalOrder
         cursor.execute("UPDATE FinalOrder SET Status = %s WHERE orderNo = %s", (status, table_no))
+
+        # If the order is served, delete entry from GroupTable
+        if status.lower() == "served":
+            cursor.execute("DELETE FROM GroupTable WHERE tableNo = %s", (table_no,))
+
         conn.commit()
         cursor.close()
         conn.close()
         st.success("Order status updated successfully!")
+
     except mysql.connector.Error as err:
         st.error(f"Database error: {err}")
-
 def dashboard():
     st.title("📊 Dashboard")
     st.write(f"Welcome! Your group: **{st.session_state.user_group}**")
