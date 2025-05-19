@@ -65,7 +65,7 @@ def update_order_status(table_no, status, user_group):
         # If the order is served, delete entry from GroupTable
         if status == "Served":
             
-            cursor.execute("DELETE FROM HotelOrder WHERE tableNo = %s AND user_group = %s", (table_no, user_group))
+            cursor.execute("DELETE FROM HotelOrder WHERE tableNo = %s AND group = %s", (table_no, user_group))
 
 
         conn.commit()
